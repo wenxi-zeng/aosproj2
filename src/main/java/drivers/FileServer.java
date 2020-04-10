@@ -213,7 +213,11 @@ public class FileServer implements SocketServer.EventHandler, SocketClient.Serve
     }
 
     public void broadcast(Request request) {
-        for (PhysicalNode server : Config.getInstance().getServers()) {
+        broadcast(request, Config.getInstance().getServers());
+    }
+
+    public void broadcast(Request request, List<PhysicalNode> servers) {
+        for (PhysicalNode server : servers) {
             try {
                 Request copy = (Request) request.clone();
                 copy.withSender(Config.getInstance().getAddress())
@@ -231,7 +235,11 @@ public class FileServer implements SocketServer.EventHandler, SocketClient.Serve
     }
 
     public void asyncBroadcast(Request request) {
-        for (PhysicalNode server : Config.getInstance().getServers()) {
+        asyncBroadcast(request, Config.getInstance().getServers());
+    }
+
+    public void asyncBroadcast(Request request, List<PhysicalNode> servers) {
+        for (PhysicalNode server : servers) {
             Request copy = (Request) request.clone();
             copy.withSender(Config.getInstance().getAddress())
                     .withReceiver(server.getAddress())

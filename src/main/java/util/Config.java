@@ -93,7 +93,7 @@ public class Config {
                 }
                 servers.add(node);
             }
-
+            servers.sort(Comparator.comparing(PhysicalNode::getId));
             files = Arrays.asList(FILES);
         } catch (IOException e) {
             System.out.println("Config file not found or does not follow the standard format");

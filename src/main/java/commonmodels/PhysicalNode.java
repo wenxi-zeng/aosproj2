@@ -12,7 +12,8 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 @JsonPropertyOrder({
         "id",
         "address",
-        "port"
+        "port",
+        "active"
 })
 public class PhysicalNode implements Serializable
 {
@@ -23,7 +24,9 @@ public class PhysicalNode implements Serializable
     private String address;
     @JsonProperty("port")
     private int port;
-    private final static long serialVersionUID = -5997931464815321522L;
+    @JsonProperty("active")
+    private boolean active = true;
+    private final static long serialVersionUID = -4955842269298436005L;
 
     /**
      * No args constructor for use in serialization
@@ -36,13 +39,15 @@ public class PhysicalNode implements Serializable
      *
      * @param address
      * @param port
+     * @param active
      * @param id
      */
-    public PhysicalNode(String id, String address, int port) {
+    public PhysicalNode(String id, String address, int port, boolean active) {
         super();
         this.id = id;
         this.address = address;
         this.port = port;
+        this.active = active;
     }
 
     @JsonProperty("id")
@@ -90,14 +95,29 @@ public class PhysicalNode implements Serializable
         return this;
     }
 
+    @JsonProperty("active")
+    public boolean isActive() {
+        return active;
+    }
+
+    @JsonProperty("active")
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public PhysicalNode withActive(boolean active) {
+        this.active = active;
+        return this;
+    }
+
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("id", id).append("address", address).append("port", port).toString();
+        return new ToStringBuilder(this).append("id", id).append("address", address).append("port", port).append("active", active).toString();
     }
 
     @Override
     public int hashCode() {
-        return new HashCodeBuilder().append(id).append(address).append(port).toHashCode();
+        return new HashCodeBuilder().append(active).append(id).append(address).append(port).toHashCode();
     }
 
     @Override
@@ -109,7 +129,7 @@ public class PhysicalNode implements Serializable
             return false;
         }
         PhysicalNode rhs = ((PhysicalNode) other);
-        return new EqualsBuilder().append(id, rhs.id).append(address, rhs.address).append(port, rhs.port).isEquals();
+        return new EqualsBuilder().append(active, rhs.active).append(id, rhs.id).append(address, rhs.address).append(port, rhs.port).isEquals();
     }
 
 }

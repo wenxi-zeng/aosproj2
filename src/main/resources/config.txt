@@ -1,3 +1,7 @@
 server1 dc01.utdallas.edu
 server2 dc02.utdallas.edu
 server3 dc03.utdallas.edu
+server4 dc04.utdallas.edu
+server5 dc05.utdallas.edu
+server6 dc06.utdallas.edu
+server7 dc07.utdallas.edu

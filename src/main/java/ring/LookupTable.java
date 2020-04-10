@@ -6,7 +6,9 @@ import util.FileHelper;
 import util.MathX;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class LookupTable {
 
@@ -14,8 +16,13 @@ public class LookupTable {
 
     private List<PhysicalNode> nodes;
 
+    private Map<String, PhysicalNode> map;
+
     public LookupTable() {
         nodes = Config.getInstance().getServers();
+        map = new HashMap<>();
+        for (PhysicalNode node : nodes)
+            map.put(node.getId(), node);
     }
 
     public static LookupTable getInstance() {
@@ -84,5 +91,9 @@ public class LookupTable {
 
         List<PhysicalNode> pnodes = lookup(file);
         return pnodes.get(replica % 7);
+    }
+
+    public PhysicalNode getNode(String id) {
+        return map.get(id);
     }
 }

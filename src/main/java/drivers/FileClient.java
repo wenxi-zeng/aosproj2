@@ -163,12 +163,17 @@ public class FileClient {
                     SimpleLog.v(response.getMessage());
                 }
                 else {
-                    SimpleLog.v(Config.getInstance().getId() + " requests: \"" + request.getAttachment() + "\" " + "for file #" + request.getHeader() + " at time: " + request.getTimestamp());
-                    socketClient.send(request.getReceiver(), request, callBack);
-                    try {
-                        semaphore.acquire();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+                    if (LookupTable.getInstance().getNode(request.getReceiverId()).isActive()) {
+                        SimpleLog.v(Config.getInstance().getId() + " requests: \"" + request.getAttachment() + "\" " + "for file #" + request.getHeader() + " at time: " + request.getTimestamp());
+                        socketClient.send(request.getReceiver(), request, callBack);
+                        try {
+                            semaphore.acquire();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    else {
+                        SimpleLog.v("Selected server " + request.getReceiverId() + " is unreachable at time: " + request.getTimestamp());
                     }
                 }
 

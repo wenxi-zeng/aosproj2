@@ -85,10 +85,16 @@ public class FileWorker implements Runnable{
         if (!queue.isEmpty() &&
                 queue.peek().getSender().equals(request.getSender()))
             queue.poll();
+
+        if (queue.isEmpty()) working.set(false);
     }
 
     public void setClocks(Map<String, Long> clocks) {
         this.clocks = clocks;
         this.semaphore.release();
+    }
+
+    public boolean isWorking() {
+        return working.get();
     }
 }

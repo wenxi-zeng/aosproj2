@@ -3,6 +3,7 @@ package managers;
 import commonmodels.transport.Request;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -15,7 +16,7 @@ public class FileManager implements Observer {
     private ExecutorService executor;
 
     private FileManager() {
-        map = new HashMap<>();
+        map = new ConcurrentHashMap<>();
     }
 
     public static FileManager getInstance() {
@@ -30,12 +31,8 @@ public class FileManager implements Observer {
         return instance;
     }
 
-    public void init(List<String> files) {
-        for (String file : files)
-            map.put(file, new FileWorker());
-        this.executor = Executors.newFixedThreadPool(files.size());
-        for (FileWorker worker : map.values())
-            executor.execute(worker);
+    public void init() {
+        this.executor = Executors.newFixedThreadPool(32);
     }
 
     @Override
@@ -48,14 +45,19 @@ public class FileManager implements Observer {
     }
 
     public void serve(Request request) {
+        if (!map.containsKey(request.getHeader()) || !map.get(request.getHeader()).isWorking())
+            map.put(request.getHeader(), new FileWorker());
+
         FileWorker worker = map.get(request.getHeader());
-        if (worker != null)
-            worker.serve(request);
+        executor.execute(worker);
+        worker.serve(request);
     }
 
     public void release(Request request) {
         FileWorker worker = map.get(request.getHeader());
-        if (worker != null)
+        if (worker != null) {
             worker.release(request);
+            if (!worker.isWorking()) map.remove(request.getHeader());
+        }
     }
 }

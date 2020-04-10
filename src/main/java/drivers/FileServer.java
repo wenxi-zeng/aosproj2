@@ -259,7 +259,7 @@ public class FileServer implements SocketServer.EventHandler, SocketClient.Serve
 
     public void initSubscriptions() {
         AckVector.getInstance().init(Config.getInstance().getServers());
-        FileManager.getInstance().init(Config.getInstance().getFiles());
+        FileManager.getInstance().init();
         AckVector.getInstance().addObserver(FileManager.getInstance());
     }
 

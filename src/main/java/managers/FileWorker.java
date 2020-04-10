@@ -1,13 +1,13 @@
 package managers;
 
+import commonmodels.PhysicalNode;
 import commonmodels.transport.Request;
+import ring.LookupTable;
 import util.Config;
 import util.FileHelper;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -19,7 +19,7 @@ public class FileWorker implements Runnable{
 
     private final AtomicBoolean working;
 
-    private List<Long> clocks;
+    private Map<String, Long> clocks;
 
     public FileWorker() {
         this.queue = new PriorityQueue<>((a, b) ->
@@ -61,9 +61,15 @@ public class FileWorker implements Runnable{
     }
 
     private boolean ackFromAll(Request request) {
-        if (clocks == null) return false;
+        List<Long> replicaClocks = new ArrayList<>();
+        for (PhysicalNode node : LookupTable.getInstance().lookup(request.getHeader())) {
+            if (clocks.containsKey(node.getAddress()))
+                replicaClocks.add(clocks.get(node.getAddress()));
+        }
 
-        for (long clock : clocks) {
+        if (replicaClocks.isEmpty()) return false;
+
+        for (long clock : replicaClocks) {
             if (request.getTimestamp() > clock) return false;
         }
 
@@ -81,7 +87,7 @@ public class FileWorker implements Runnable{
             queue.poll();
     }
 
-    public void setClocks(List<Long> clocks) {
+    public void setClocks(Map<String, Long> clocks) {
         this.clocks = clocks;
         this.semaphore.release();
     }

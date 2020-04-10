@@ -41,7 +41,7 @@ public class FileManager implements Observer {
     @Override
     public void update(Observable o, Object arg) {
         @SuppressWarnings("unchecked")
-        List<Long> clock = (List<Long>) arg;
+        Map<String, Long> clock = (Map<String, Long>) arg;
         for (FileWorker worker : map.values()) {
             worker.setClocks(clock);
         }

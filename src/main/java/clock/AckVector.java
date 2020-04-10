@@ -32,8 +32,8 @@ public class AckVector extends Observable {
             vector.put(node.getAddress(), 0L);
     }
 
-    public List<Long> getClocks() {
-        return new ArrayList<>(vector.values());
+    public Map<String, Long> getClocks() {
+        return Collections.unmodifiableMap(vector);
     }
 
     public long getClock(String node) {

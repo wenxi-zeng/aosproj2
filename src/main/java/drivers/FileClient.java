@@ -5,6 +5,7 @@ import commands.CommonCommand;
 import commonmodels.PhysicalNode;
 import commonmodels.transport.Request;
 import commonmodels.transport.Response;
+import ring.LookupTable;
 import socket.SocketClient;
 import util.Config;
 import util.MathX;
@@ -71,8 +72,8 @@ public class FileClient {
         semaphore = new Semaphore(0);
     }
 
-    private PhysicalNode choseServer() {
-        List<PhysicalNode> pnodes = Config.getInstance().getServers();
+    private PhysicalNode choseServer(String file) {
+        List<PhysicalNode> pnodes = LookupTable.getInstance().lookup(file);
         return pnodes.get(MathX.nextInt(pnodes.size()));
     }
 
@@ -91,8 +92,8 @@ public class FileClient {
                 e.printStackTrace();
             }
 
-            PhysicalNode node = choseServer();
             String file = choseFile();
+            PhysicalNode node = choseServer(file);
             long timestamp = LogicClock.getInstance().getClock();
 
             Request request = new Request()

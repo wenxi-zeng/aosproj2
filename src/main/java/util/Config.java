@@ -11,7 +11,7 @@ public class Config {
 
     public final static int PORT = 50050;
 
-    private final static String[] FILES = new String[] {"f1.txt", "f2.txt", "f3.txt", "f4.txt"};
+    private final static String[] FILES = new String[] {"f0.txt", "f1.txt", "f2.txt", "f3.txt", "f4.txt", "f5.txt", "f6.txt"};
 
     private static volatile Config instance = null;
 

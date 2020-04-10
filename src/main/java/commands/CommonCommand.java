@@ -136,6 +136,28 @@ public enum CommonCommand implements Command {
                     .withMessage(content)
                     .withTimestamp(LogicClock.getInstance().getClock());
         }
+    },
+
+    DISRUPT {
+        @Override
+        public Response execute(Request request) {
+            String id = request.getAttachment();
+            LookupTable.getInstance().disrupt(id);
+            return new Response(request)
+                    .withMessage("Channel " + Config.getInstance().getId() + " -> " + id + " has been disrupted")
+                    .withTimestamp(LogicClock.getInstance().getClock());
+        }
+    },
+
+    RESUME {
+        @Override
+        public Response execute(Request request) {
+            String id = request.getAttachment();
+            LookupTable.getInstance().resume(id);
+            return new Response(request)
+                    .withMessage("Channel " + Config.getInstance().getId() + " -> " + id + " has been resumed")
+                    .withTimestamp(LogicClock.getInstance().getClock());
+        }
     }
 
 }

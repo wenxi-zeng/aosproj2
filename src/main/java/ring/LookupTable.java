@@ -54,4 +54,22 @@ public class LookupTable {
 
         return String.join(" and ", replicas);
     }
+
+    public void disrupt(String nodeId) {
+        for (PhysicalNode node : nodes) {
+            if (node.getId().equals(nodeId)) {
+                node.setActive(false);
+                break;
+            }
+        }
+    }
+
+    public void resume(String nodeId) {
+        for (PhysicalNode node : nodes) {
+            if (node.getId().equals(nodeId)) {
+                node.setActive(true);
+                break;
+            }
+        }
+    }
 }

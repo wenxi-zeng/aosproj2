@@ -86,7 +86,7 @@ public class Config {
             List<String> lines = FileHelper.read(CONFIG_PATH);
             for (String line : lines) {
                 String[] pair = line.split(" ");
-                PhysicalNode node = new PhysicalNode(pair[0], pair[1], port);
+                PhysicalNode node = new PhysicalNode(pair[0], pair[1], port, true);
                 if (node.getAddress().equals(address)) {
                     this.id = node.getId();
                     continue;

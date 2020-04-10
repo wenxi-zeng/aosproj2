@@ -3,9 +3,11 @@ package drivers;
 import clock.LogicClock;
 import commands.CommonCommand;
 import commonmodels.PhysicalNode;
+import commonmodels.transport.InvalidRequestException;
 import commonmodels.transport.Request;
 import commonmodels.transport.Response;
 import ring.LookupTable;
+import ring.Terminal;
 import socket.SocketClient;
 import util.Config;
 import util.MathX;
@@ -14,6 +16,7 @@ import util.SimpleLog;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.Semaphore;
 
 public class FileClient {
@@ -38,16 +41,21 @@ public class FileClient {
     };
 
     public static void main(String[] args) {
+        if (args.length < 1) {
+            System.err.println ("Usage: FileClient <-a | -t>");
+            return;
+        }
+
         FileClient client = new FileClient();
 
-        if (args.length > 0)
-            Config.getInstance().setId(args[0]);
-        int daemonPort = Config.PORT;
         if (args.length > 1)
+            Config.getInstance().setId(args[1]);
+        int daemonPort = Config.PORT;
+        if (args.length > 2)
         {
             try
             {
-                daemonPort = Integer.parseInt(args[1]);
+                daemonPort = Integer.parseInt(args[2]);
             }
             catch (NumberFormatException e)
             {
@@ -64,17 +72,16 @@ public class FileClient {
         String address = getAddress();
         Config.with(address, daemonPort);
         SimpleLog.with(address, daemonPort);
-        client.start();
+
+        if (args[0].equals("-a"))
+            client.start();
+        else
+            client.launchTerminal();
     }
 
     public FileClient() {
         socketClient = SocketClient.getInstance();
         semaphore = new Semaphore(0);
-    }
-
-    private PhysicalNode choseServer(String file) {
-        List<PhysicalNode> pnodes = LookupTable.getInstance().lookup(file);
-        return pnodes.get(MathX.nextInt(pnodes.size()));
     }
 
     private String choseFile() {
@@ -93,7 +100,7 @@ public class FileClient {
             }
 
             String file = choseFile();
-            PhysicalNode node = choseServer(file);
+            PhysicalNode node = LookupTable.getInstance().chooseServer(file);
             long timestamp = LogicClock.getInstance().getClock();
 
             Request request = new Request()
@@ -139,5 +146,36 @@ public class FileClient {
 
     private void onFinished(){
         socketClient.stop();
+    }
+
+    private void launchTerminal() {
+        Scanner in = new Scanner(System.in);
+        String command = in.nextLine();
+        Terminal terminal = new Terminal();
+        terminal.printInfo();
+
+        while (!command.equalsIgnoreCase("exit")){
+            try {
+                Request request = terminal.translate(command);
+                if (request.getType().equals(CommonCommand.DISRUPT_LOCAL.name()) || request.getType().equals(CommonCommand.RESUME_LOCAL.name())) {
+                    CommonCommand cmd = CommonCommand.valueOf(request.getType());
+                    Response response = cmd.execute(request);
+                    SimpleLog.v(response.getMessage());
+                }
+                else {
+                    SimpleLog.v(Config.getInstance().getId() + " requests: \"" + request.getAttachment() + "\" " + "for file #" + request.getHeader() + " at time: " + request.getTimestamp());
+                    socketClient.send(request.getReceiver(), request, callBack);
+                    try {
+                        semaphore.acquire();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                command = in.nextLine();
+            } catch (InvalidRequestException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

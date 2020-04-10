@@ -3,6 +3,7 @@ package ring;
 import commonmodels.PhysicalNode;
 import util.Config;
 import util.FileHelper;
+import util.MathX;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -71,5 +72,17 @@ public class LookupTable {
                 break;
             }
         }
+    }
+
+    public PhysicalNode chooseServer(String file) {
+        List<PhysicalNode> pnodes = lookup(file);
+        return pnodes.get(MathX.nextInt(pnodes.size()));
+    }
+
+    public PhysicalNode chooseServer(String file, int replica) {
+        if (replica < 0) return chooseServer(file);
+
+        List<PhysicalNode> pnodes = lookup(file);
+        return pnodes.get(replica % 7);
     }
 }

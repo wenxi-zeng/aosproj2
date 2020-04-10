@@ -1,8 +1,8 @@
 package commands;
 
-import clock.AckVector;
 import clock.LogicClock;
 import commonmodels.PhysicalNode;
+import commonmodels.transport.InvalidRequestException;
 import commonmodels.transport.Request;
 import commonmodels.transport.Response;
 import drivers.FileServer;
@@ -16,9 +16,52 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
-public enum CommonCommand implements Command {
+public enum CommonCommand implements Command, ConvertableCommand{
 
     APPEND {
+        @Override
+        public Request convertToRequest(String[] args) throws InvalidRequestException {
+            if (args.length != 3 && args.length != 4) {
+                throw new InvalidRequestException("Wrong arguments. Try: " + getHelpString());
+            }
+
+            String file = args[1];
+            int r = -1;
+            try {
+                r = Integer.parseInt(args[2]);
+            } catch (NumberFormatException ignored) {}
+
+            PhysicalNode node = LookupTable.getInstance().chooseServer(file, r);
+
+            String attachment = "";
+            if (args.length == 4)
+                attachment = args[3];
+            else
+                attachment = Config.getInstance().getId() + " randomly generated message  at " + LogicClock.getInstance().getClock() + " -- " + node.getId();
+
+            long timestamp = LogicClock.getInstance().getClock();
+
+            return new Request()
+                    .withAttachment(attachment)
+                    .withHeader(file)
+                    .withReceiver(node.getAddress())
+                    .withSender(Config.getInstance().getAddress())
+                    .withReceiverId(node.getId())
+                    .withSenderId(Config.getInstance().getId())
+                    .withTimestamp(timestamp)
+                    .withType(CommonCommand.APPEND.name());
+        }
+
+        @Override
+        public String getParameterizedString() {
+            return CommonCommand.APPEND.name() + " %s %s %s";
+        }
+
+        @Override
+        public String getHelpString() {
+            return String.format(getParameterizedString(), "<filename>", "<replica>", "[content]");
+        }
+
         @Override
         public Response execute(Request request) {
             SimpleLog.v(Config.getInstance().getId() + " receives: \"" + request.getAttachment() + "\" "  + "for file #" + request.getHeader() + " at time: " + request.getTimestamp());
@@ -32,7 +75,7 @@ public enum CommonCommand implements Command {
                         .withTimestamp(LogicClock.getInstance().getClock());
 
             LogicClock.getInstance().increment();
-            Request mutexRequest = new Request().withType(CommonCommand.REQUEST.name())
+            Request mutexRequest = new Request().withType(ServerCommand.REQUEST.name())
                     .withTimestamp(LogicClock.getInstance().getClock());
             FileServer.getInstance().asyncBroadcast(mutexRequest, replicas);
 
@@ -48,13 +91,13 @@ public enum CommonCommand implements Command {
             }
 
             Request appendRequest = (Request) request.clone();
-            appendRequest.withType(CommonCommand.APPEND_ONLY.name())
+            appendRequest.withType(ServerCommand.APPEND_ONLY.name())
                     .withTimestamp(LogicClock.getInstance().getClock());
             FileServer.getInstance().broadcast(appendRequest, replicas);
 
             LogicClock.getInstance().increment();
             Request releaseRequest = (Request) request.clone();
-            releaseRequest.withType(CommonCommand.RELEASE.name())
+            releaseRequest.withType(ServerCommand.RELEASE.name())
                     .withTimestamp(LogicClock.getInstance().getClock());
             FileServer.getInstance().broadcast(releaseRequest, replicas);
 
@@ -64,65 +107,41 @@ public enum CommonCommand implements Command {
         }
     },
 
-    APPEND_ONLY {
-        @Override
-        public Response execute(Request request) {
-            try {
-                FileHelper.append(Config.getInstance().getId(), request.getHeader(), request.getAttachment());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            return new Response(request)
-                    .withMessage("successful append")
-                    .withTimestamp(LogicClock.getInstance().getClock());
-        }
-    },
-
-    RELEASE {
-        @Override
-        public Response execute(Request request) {
-            LogicClock.getInstance().increment(request.getTimestamp());
-            FileManager.getInstance().release(request);
-            AckVector.getInstance().updateClock(request.getSender(), request.getTimestamp());
-            return new Response(request)
-                    .withMessage("successful release")
-                    .withTimestamp(LogicClock.getInstance().getClock());
-        }
-    },
-
-    REQUEST {
-        @Override
-        public Response execute(Request request) {
-            LogicClock.getInstance().increment(request.getTimestamp());
-            FileManager.getInstance().serve(request);
-            AckVector.getInstance().updateClock(request.getSender(), request.getTimestamp());
-
-            LogicClock.getInstance().increment();
-            request.withType(CommonCommand.ACK.name())
-                    .withTimestamp(LogicClock.getInstance().getClock())
-                    .withReceiver(request.getSender())
-                    .withReceiverId(request.getSenderId());
-            FileServer.getInstance().send(request);
-
-            return new Response(request)
-                    .withMessage("successful request")
-                    .withTimestamp(LogicClock.getInstance().getClock());
-        }
-    },
-
-    ACK {
-        @Override
-        public Response execute(Request request) {
-            LogicClock.getInstance().increment(request.getTimestamp());
-            AckVector.getInstance().updateClock(request.getSender(), request.getTimestamp());
-            return new Response(request)
-                    .withMessage("successful ack")
-                    .withTimestamp(LogicClock.getInstance().getClock());
-        }
-    },
 
     READ {
+        @Override
+        public Request convertToRequest(String[] args) throws InvalidRequestException {
+            if (args.length > 3) {
+                throw new InvalidRequestException("Wrong arguments. Try: " + getHelpString());
+            }
+
+            int r = -1;
+            try {
+                r = Integer.parseInt(args[2]);
+            } catch (NumberFormatException ignored) {}
+
+            PhysicalNode node = LookupTable.getInstance().chooseServer(args[1], r);
+            long timestamp = LogicClock.getInstance().getClock();
+
+            return new Request().withType(CommonCommand.READ.name())
+                    .withHeader(args[1])
+                    .withReceiver(node.getAddress())
+                    .withSender(Config.getInstance().getAddress())
+                    .withReceiverId(node.getId())
+                    .withSenderId(Config.getInstance().getId())
+                    .withTimestamp(timestamp);
+        }
+
+        @Override
+        public String getParameterizedString() {
+            return CommonCommand.READ.name() + " %s %s";
+        }
+
+        @Override
+        public String getHelpString() {
+            return String.format(getParameterizedString(), "<filename> <replica>");
+        }
+
         @Override
         public Response execute(Request request) {
             String content;
@@ -140,6 +159,28 @@ public enum CommonCommand implements Command {
 
     DISRUPT {
         @Override
+        public Request convertToRequest(String[] args) throws InvalidRequestException {
+            if (args.length != 3) {
+                throw new InvalidRequestException("Wrong arguments. Try: " + getHelpString());
+            }
+
+            return new Request().withType(CommonCommand.DISRUPT.name())
+                    .withReceiverId(args[1])
+                    .withAttachment(args[2])
+                    .withTimestamp(LogicClock.getInstance().getClock());
+        }
+
+        @Override
+        public String getParameterizedString() {
+            return CommonCommand.DISRUPT.name() + " %s %s";
+        }
+
+        @Override
+        public String getHelpString() {
+            return String.format(getParameterizedString(), "<sender> <receiver>");
+        }
+
+        @Override
         public Response execute(Request request) {
             String id = request.getAttachment();
             LookupTable.getInstance().disrupt(id);
@@ -151,11 +192,95 @@ public enum CommonCommand implements Command {
 
     RESUME {
         @Override
+        public Request convertToRequest(String[] args) throws InvalidRequestException {
+            if (args.length != 3) {
+                throw new InvalidRequestException("Wrong arguments. Try: " + getHelpString());
+            }
+
+            return new Request().withType(CommonCommand.RESUME.name())
+                    .withReceiverId(args[1])
+                    .withAttachment(args[2])
+                    .withTimestamp(LogicClock.getInstance().getClock());
+        }
+
+        @Override
+        public String getParameterizedString() {
+            return CommonCommand.RESUME.name() + " %s %s";
+        }
+
+        @Override
+        public String getHelpString() {
+            return String.format(getParameterizedString(), "<sender> <receiver>");
+        }
+
+        @Override
         public Response execute(Request request) {
             String id = request.getAttachment();
             LookupTable.getInstance().resume(id);
             return new Response(request)
                     .withMessage("Channel " + Config.getInstance().getId() + " -> " + id + " has been resumed")
+                    .withTimestamp(LogicClock.getInstance().getClock());
+        }
+    },
+
+    DISRUPT_LOCAL {
+        @Override
+        public Request convertToRequest(String[] args) throws InvalidRequestException {
+            if (args.length != 2) {
+                throw new InvalidRequestException("Wrong arguments. Try: " + getHelpString());
+            }
+
+            return new Request().withType(CommonCommand.DISRUPT_LOCAL.name())
+                    .withAttachment(args[1]);
+        }
+
+        @Override
+        public String getParameterizedString() {
+            return CommonCommand.DISRUPT_LOCAL.name() + " %s";
+        }
+
+        @Override
+        public String getHelpString() {
+            return String.format(getParameterizedString(), "<remote>");
+        }
+
+        @Override
+        public Response execute(Request request) {
+            String id = request.getAttachment();
+            LookupTable.getInstance().disrupt(id);
+            return new Response(request)
+                    .withMessage("Local channel to remote " + id + " has been disrupted")
+                    .withTimestamp(LogicClock.getInstance().getClock());
+        }
+    },
+
+    RESUME_LOCAL {
+        @Override
+        public Request convertToRequest(String[] args) throws InvalidRequestException {
+            if (args.length != 2) {
+                throw new InvalidRequestException("Wrong arguments. Try: " + getHelpString());
+            }
+
+            return new Request().withType(CommonCommand.RESUME_LOCAL.name())
+                    .withAttachment(args[1]);
+        }
+
+        @Override
+        public String getParameterizedString() {
+            return CommonCommand.RESUME_LOCAL.name() + " %s";
+        }
+
+        @Override
+        public String getHelpString() {
+            return String.format(getParameterizedString(), "<remote>");
+        }
+
+        @Override
+        public Response execute(Request request) {
+            String id = request.getAttachment();
+            LookupTable.getInstance().resume(id);
+            return new Response(request)
+                    .withMessage("Local channel to remote " + id + " has been resumed")
                     .withTimestamp(LogicClock.getInstance().getClock());
         }
     }

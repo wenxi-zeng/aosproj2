@@ -3,6 +3,7 @@ package drivers;
 import clock.AckVector;
 import clock.LogicClock;
 import commands.CommonCommand;
+import commands.ServerCommand;
 import commonmodels.PhysicalNode;
 import commonmodels.transport.InvalidRequestException;
 import commonmodels.transport.Request;
@@ -175,7 +176,11 @@ public class FileServer implements SocketServer.EventHandler, SocketClient.Serve
 
     @Override
     public Response onReceived(Request o) {
-        return processCommonCommand(o);
+        Response response = processCommonCommand(o);
+        if (response.getStatus() == Response.STATUS_INVALID_REQUEST)
+            response = processServerCommand(o);
+
+        return response;
     }
 
     @Override
@@ -186,6 +191,17 @@ public class FileServer implements SocketServer.EventHandler, SocketClient.Serve
     public Response processCommonCommand(Request o) {
         try {
             CommonCommand command = CommonCommand.valueOf(o.getType());
+            return command.execute(o);
+        }
+        catch (IllegalArgumentException e) {
+            return new Response(o).withStatus(Response.STATUS_INVALID_REQUEST)
+                    .withMessage(e.getMessage());
+        }
+    }
+
+    public Response processServerCommand(Request o) {
+        try {
+            ServerCommand command = ServerCommand.valueOf(o.getType());
             return command.execute(o);
         }
         catch (IllegalArgumentException e) {

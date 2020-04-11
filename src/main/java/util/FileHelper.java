@@ -1,7 +1,5 @@
 package util;
 
-import org.apache.commons.lang3.StringUtils;
-
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +30,7 @@ public class FileHelper {
     }
 
     public static void append(String filename, String line) throws IOException {
+        if (line == null) return;
         FileWriter fileWriter = new FileWriter(filename, true);
         fileWriter.write(line.trim() + "\n");
         fileWriter.close();
@@ -53,7 +52,7 @@ public class FileHelper {
 
     public static int hash(String filename) {
         String num = filename.replaceAll("[^0-9]", "");
-        if (StringUtils.isNoneEmpty(num)) return filename.hashCode() % 7;
+        if (num.isEmpty()) return MathX.positiveHash(filename.hashCode()) % 7;
         else return Integer.parseInt(num) % 7;
     }
 }

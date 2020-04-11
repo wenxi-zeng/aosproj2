@@ -41,15 +41,13 @@ public class FileClient {
     };
 
     public static void main(String[] args) {
-        if (args.length < 1) {
-            System.err.println ("Usage: FileClient <-a | -t>");
+        if (args.length < 2) {
+            System.err.println ("Usage: FileClient <-a | -t> <client name>");
             return;
         }
 
         FileClient client = new FileClient();
 
-        if (args.length > 1)
-            Config.getInstance().setId(args[1]);
         int daemonPort = Config.PORT;
         if (args.length > 2)
         {
@@ -70,7 +68,7 @@ public class FileClient {
         }
 
         String address = getAddress();
-        Config.with(address, daemonPort);
+        Config.with(address, daemonPort, args[1], true);
         SimpleLog.with(address, daemonPort);
 
         if (args[0].equals("-a"))

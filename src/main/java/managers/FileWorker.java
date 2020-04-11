@@ -5,6 +5,7 @@ import commonmodels.transport.Request;
 import ring.LookupTable;
 import util.Config;
 import util.FileHelper;
+import util.SimpleLog;
 
 import java.io.IOException;
 import java.util.*;
@@ -61,6 +62,7 @@ public class FileWorker implements Runnable{
     }
 
     private boolean ackFromAll(Request request) {
+        if (clocks == null) return false;
         List<Long> replicaClocks = new ArrayList<>();
         for (PhysicalNode node : LookupTable.getInstance().lookup(request.getHeader())) {
             if (clocks.containsKey(node.getAddress()))

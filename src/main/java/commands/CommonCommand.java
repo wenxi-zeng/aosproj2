@@ -68,7 +68,7 @@ public enum CommonCommand implements Command, ConvertableCommand{
 
             List<PhysicalNode> replicas = LookupTable.getInstance().lookup(request.getHeader());
             String inactiveReplicas = LookupTable.getInstance().lookupInactive(request.getHeader());
-            if (replicas.size() == 1)
+            if (replicas.size() == 0)
                 return new Response(request)
                         .withStatus(Response.STATUS_FAILED)
                         .withMessage("append failed because only 1 replica is available. failed replicas: " + inactiveReplicas)
@@ -76,6 +76,7 @@ public enum CommonCommand implements Command, ConvertableCommand{
 
             LogicClock.getInstance().increment();
             Request mutexRequest = new Request().withType(ServerCommand.REQUEST.name())
+                    .withHeader(request.getHeader())
                     .withTimestamp(LogicClock.getInstance().getClock());
             FileServer.getInstance().asyncBroadcast(mutexRequest, replicas);
 
@@ -102,7 +103,7 @@ public enum CommonCommand implements Command, ConvertableCommand{
             FileServer.getInstance().broadcast(releaseRequest, replicas);
 
             return new Response(request)
-                    .withMessage(replicas.size() > 2 ? "successful append" : "successful append to 2 replica. replica " + inactiveReplicas + " is not available")
+                    .withMessage(replicas.size() > 1 ? "successful append" : "successful append to 2 replica. replica " + inactiveReplicas + " is not available")
                     .withTimestamp(LogicClock.getInstance().getClock());
         }
     },

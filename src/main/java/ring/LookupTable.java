@@ -4,6 +4,7 @@ import commonmodels.PhysicalNode;
 import util.Config;
 import util.FileHelper;
 import util.MathX;
+import util.SimpleLog;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,8 +43,8 @@ public class LookupTable {
         List<PhysicalNode> replicas = new ArrayList<>();
 
         for (int i = 0; i < 3; i++) {
-            PhysicalNode node = nodes.get((h + 1) % 7);
-            if (node.isActive())
+            PhysicalNode node = nodes.get((h + i) % 7);
+            if (node.isActive() && !node.getId().equals(Config.getInstance().getId()))
                 replicas.add(node);
         }
 
@@ -56,7 +57,7 @@ public class LookupTable {
 
         for (int i = 0; i < 3; i++) {
             PhysicalNode node = nodes.get((h + 1) % 7);
-            if (!node.isActive())
+            if (!node.isActive() && !node.getId().equals(Config.getInstance().getId()))
                 replicas.add(node.getId());
         }
 

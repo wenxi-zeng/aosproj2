@@ -228,10 +228,6 @@ public class FileServer implements SocketServer.EventHandler, SocketClient.Serve
         SimpleLog.i(error);
     }
 
-    public void broadcast(Request request) {
-        broadcast(request, Config.getInstance().getServers());
-    }
-
     public void broadcast(Request request, List<PhysicalNode> servers) {
         for (PhysicalNode server : servers) {
             try {
@@ -248,10 +244,6 @@ public class FileServer implements SocketServer.EventHandler, SocketClient.Serve
                 e.printStackTrace();
             }
         }
-    }
-
-    public void asyncBroadcast(Request request) {
-        asyncBroadcast(request, Config.getInstance().getServers());
     }
 
     public void asyncBroadcast(Request request, List<PhysicalNode> servers) {

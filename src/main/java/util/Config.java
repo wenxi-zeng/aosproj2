@@ -25,6 +25,8 @@ public class Config {
 
     private String id;
 
+    private boolean isClient = false;
+
     public Config() {
         loadConfig();
     }
@@ -44,6 +46,14 @@ public class Config {
     public static void with(String address, int port) {
         Config.getInstance().address = address;
         Config.getInstance().port = port;
+        Config.getInstance().loadConfig();
+    }
+
+    public static void with(String address, int port, String id, boolean isClient) {
+        Config.getInstance().address = address;
+        Config.getInstance().port = port;
+        Config.getInstance().id =  id;
+        Config.getInstance().isClient = isClient;
         Config.getInstance().loadConfig();
     }
 
@@ -87,9 +97,8 @@ public class Config {
             for (String line : lines) {
                 String[] pair = line.split(" ");
                 PhysicalNode node = new PhysicalNode(pair[0], pair[1], port, true);
-                if (node.getAddress().equals(address)) {
+                if (!isClient && node.getAddress().equals(address)) {
                     this.id = node.getId();
-                    continue;
                 }
                 servers.add(node);
             }

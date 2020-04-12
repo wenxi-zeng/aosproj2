@@ -45,12 +45,16 @@ public class FileManager implements Observer {
     }
 
     public void serve(Request request) {
-        if (!map.containsKey(request.getHeader()) || !map.get(request.getHeader()).isWorking())
+        if (map.containsKey(request.getHeader()) && map.get(request.getHeader()).isWorking()) {
+            FileWorker worker = map.get(request.getHeader());
+            worker.serve(request);
+        }
+        else {
             map.put(request.getHeader(), new FileWorker());
-
-        FileWorker worker = map.get(request.getHeader());
-        executor.execute(worker);
-        worker.serve(request);
+            FileWorker worker = map.get(request.getHeader());
+            worker.serve(request);
+            executor.execute(worker);
+        }
     }
 
     public void release(Request request) {

@@ -36,7 +36,7 @@ public class FileManager implements Observer {
     }
 
     @Override
-    public void update(Observable o, Object arg) {
+    public synchronized void update(Observable o, Object arg) {
         @SuppressWarnings("unchecked")
         Map<String, Long> clock = (Map<String, Long>) arg;
         for (FileWorker worker : map.values()) {
@@ -44,8 +44,8 @@ public class FileManager implements Observer {
         }
     }
 
-    public void serve(Request request) {
-        if (map.containsKey(request.getHeader()) && map.get(request.getHeader()).isWorking()) {
+    public synchronized void serve(Request request) {
+        if (map.containsKey(request.getHeader())) {
             FileWorker worker = map.get(request.getHeader());
             worker.serve(request);
         }
@@ -57,11 +57,11 @@ public class FileManager implements Observer {
         }
     }
 
-    public void release(Request request) {
+    public synchronized void release(Request request) {
         FileWorker worker = map.get(request.getHeader());
         if (worker != null) {
             worker.release(request);
-            if (!worker.isWorking()) map.remove(request.getHeader());
+            // if (!worker.isWorking()) map.remove(request.getHeader());
         }
     }
 }

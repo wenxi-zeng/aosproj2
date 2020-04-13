@@ -8,6 +8,7 @@ import drivers.FileServer;
 import managers.FileManager;
 import util.Config;
 import util.FileHelper;
+import util.SimpleLog;
 
 import java.io.IOException;
 
@@ -30,12 +31,12 @@ public enum ServerCommand implements Command {
     RELEASE {
         @Override
         public Response execute(Request request) {
-            LogicClock.getInstance().increment(request.getTimestamp());
+            long clock = LogicClock.getInstance().increment(request.getTimestamp());
             FileManager.getInstance().release(request);
             AckVector.getInstance().updateClock(request.getSender(), request.getTimestamp());
             return new Response(request)
                     .withMessage("successful release")
-                    .withTimestamp(LogicClock.getInstance().getClock());
+                    .withTimestamp(clock);
         }
     },
 
@@ -46,27 +47,29 @@ public enum ServerCommand implements Command {
             FileManager.getInstance().serve(request);
             AckVector.getInstance().updateClock(request.getSender(), request.getTimestamp());
 
-            LogicClock.getInstance().increment();
-            request.withType(ServerCommand.ACK.name())
-                    .withTimestamp(LogicClock.getInstance().getClock())
+            long clock = LogicClock.getInstance().increment();
+            Request ack = (Request) request.clone();
+            ack.withType(ServerCommand.ACK.name())
+                    .withTimestamp(clock)
                     .withReceiver(request.getSender())
                     .withReceiverId(request.getSenderId());
-            FileServer.getInstance().send(request);
+            FileServer.getInstance().send(ack);
 
             return new Response(request)
                     .withMessage("successful request")
-                    .withTimestamp(LogicClock.getInstance().getClock());
+                    .withTimestamp(clock);
         }
     },
 
     ACK {
         @Override
         public Response execute(Request request) {
-            LogicClock.getInstance().increment(request.getTimestamp());
+            long clock = LogicClock.getInstance().increment(request.getTimestamp());
+            SimpleLog.v("ACK receive,  sender" + request.getSender() + ", clock: " + request.getTimestamp());
             AckVector.getInstance().updateClock(request.getSender(), request.getTimestamp());
             return new Response(request)
                     .withMessage("successful ack")
-                    .withTimestamp(LogicClock.getInstance().getClock());
+                    .withTimestamp(clock);
         }
     }
 }

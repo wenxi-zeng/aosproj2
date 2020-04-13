@@ -24,16 +24,18 @@ public class LogicClock {
         return instance;
     }
 
-    public long getClock() {
+    public synchronized long getClock() {
         return clock;
     }
 
-    public void increment() {
+    public synchronized long increment() {
         clock += DELTA;
+        return clock;
     }
 
-    public void increment(long remoteClock) {
+    public synchronized long increment(long remoteClock) {
         this.increment();
         this.clock = Math.max(clock, remoteClock + DELTA);
+        return clock;
     }
 }

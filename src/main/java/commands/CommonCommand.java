@@ -74,15 +74,15 @@ public enum CommonCommand implements Command, ConvertableCommand{
                         .withMessage("append failed because only 1 replica is available. failed replicas: " + inactiveReplicas)
                         .withTimestamp(LogicClock.getInstance().getClock());
 
-            LogicClock.getInstance().increment();
+            long clock = LogicClock.getInstance().increment();
             Request mutexRequest = new Request().withType(ServerCommand.REQUEST.name())
                     .withHeader(request.getHeader())
-                    .withTimestamp(LogicClock.getInstance().getClock());
+                    .withTimestamp(clock);
             FileServer.getInstance().asyncBroadcast(mutexRequest, replicas);
 
             Request localRecord = (Request) request.clone();
             localRecord.withSender(Config.getInstance().getAddress())
-                    .withTimestamp(LogicClock.getInstance().getClock());
+                    .withTimestamp(mutexRequest.getTimestamp());
             FileManager.getInstance().serve(localRecord);
             try {
                 localRecord.setProcessed(new Semaphore(0));
@@ -96,11 +96,11 @@ public enum CommonCommand implements Command, ConvertableCommand{
                     .withTimestamp(LogicClock.getInstance().getClock());
             FileServer.getInstance().broadcast(appendRequest, replicas);
 
-            LogicClock.getInstance().increment();
+            clock = LogicClock.getInstance().increment();
             Request releaseRequest = (Request) request.clone();
             releaseRequest.withType(ServerCommand.RELEASE.name())
-                    .withTimestamp(LogicClock.getInstance().getClock());
-            FileServer.getInstance().broadcast(releaseRequest, replicas);
+                    .withTimestamp(clock);
+            FileServer.getInstance().asyncBroadcast(releaseRequest, replicas);
 
             return new Response(request)
                     .withMessage(replicas.size() > 1 ? "successful append" : "successful append to 2 replica. replica " + inactiveReplicas + " is not available")

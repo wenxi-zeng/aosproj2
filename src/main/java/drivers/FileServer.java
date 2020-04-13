@@ -228,7 +228,7 @@ public class FileServer implements SocketServer.EventHandler, SocketClient.Serve
         SimpleLog.i(error);
     }
 
-    public void broadcast(Request request, List<PhysicalNode> servers) {
+    public synchronized void broadcast(Request request, List<PhysicalNode> servers) {
         for (PhysicalNode server : servers) {
             try {
                 Request copy = (Request) request.clone();

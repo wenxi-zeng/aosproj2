@@ -6,7 +6,7 @@ public class MathX {
     private static final long MAX_VALUE = 0xFFFFFFFFL;
     private static final double MAX_NODE = 15359.0;
 
-    private static Random random = new Random(100);
+    private static Random random = new Random();
 
     public static Queue<Integer> nonrepeatRandom(int bound, int size, List<Integer> exclude) {
         Set<Integer> s = new HashSet<>(exclude);

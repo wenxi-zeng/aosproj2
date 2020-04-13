@@ -74,11 +74,12 @@ public enum CommonCommand implements Command, ConvertableCommand{
                         .withMessage("append failed because only 1 replica is available. failed replicas: " + inactiveReplicas)
                         .withTimestamp(LogicClock.getInstance().getClock());
 
+            FileServer.Broadcaster broadcaster = new FileServer.Broadcaster();
             long clock = LogicClock.getInstance().increment();
             Request mutexRequest = new Request().withType(ServerCommand.REQUEST.name())
                     .withHeader(request.getHeader())
                     .withTimestamp(clock);
-            FileServer.getInstance().asyncBroadcast(mutexRequest, replicas);
+            broadcaster.asyncBroadcast(mutexRequest, replicas);
 
             Request localRecord = (Request) request.clone();
             localRecord.withSender(Config.getInstance().getAddress())
@@ -94,13 +95,13 @@ public enum CommonCommand implements Command, ConvertableCommand{
             Request appendRequest = (Request) request.clone();
             appendRequest.withType(ServerCommand.APPEND_ONLY.name())
                     .withTimestamp(LogicClock.getInstance().getClock());
-            FileServer.getInstance().broadcast(appendRequest, replicas);
+            broadcaster.broadcast(appendRequest, replicas);
 
             clock = LogicClock.getInstance().increment();
             Request releaseRequest = (Request) request.clone();
             releaseRequest.withType(ServerCommand.RELEASE.name())
                     .withTimestamp(clock);
-            FileServer.getInstance().asyncBroadcast(releaseRequest, replicas);
+            broadcaster.asyncBroadcast(releaseRequest, replicas);
 
             return new Response(request)
                     .withMessage(replicas.size() > 1 ? "successful append" : "successful append to 2 replica. replica " + inactiveReplicas + " is not available")

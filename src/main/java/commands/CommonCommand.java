@@ -32,6 +32,9 @@ public enum CommonCommand implements Command, ConvertableCommand{
             } catch (NumberFormatException ignored) {}
 
             PhysicalNode node = LookupTable.getInstance().chooseServer(file, r);
+            if (node == null) {
+                throw new InvalidRequestException("No replica available for " + file);
+            }
 
             String attachment = "";
             if (args.length == 4)
@@ -113,16 +116,22 @@ public enum CommonCommand implements Command, ConvertableCommand{
     READ {
         @Override
         public Request convertToRequest(String[] args) throws InvalidRequestException {
-            if (args.length > 3) {
+            if (args.length != 2 && args.length != 3) {
                 throw new InvalidRequestException("Wrong arguments. Try: " + getHelpString());
             }
 
             int r = -1;
-            try {
-                r = Integer.parseInt(args[2]);
-            } catch (NumberFormatException ignored) {}
+            if (args.length == 3) {
+                try {
+                    r = Integer.parseInt(args[2]);
+                } catch (NumberFormatException ignored) {
+                }
+            }
 
             PhysicalNode node = LookupTable.getInstance().chooseServer(args[1], r);
+            if (node == null) {
+                throw new InvalidRequestException("No replica available for " + args[1]);
+            }
             long timestamp = LogicClock.getInstance().getClock();
 
             return new Request().withType(CommonCommand.READ.name())
@@ -141,7 +150,7 @@ public enum CommonCommand implements Command, ConvertableCommand{
 
         @Override
         public String getHelpString() {
-            return String.format(getParameterizedString(), "<filename> <replica>");
+            return String.format(getParameterizedString(), "<filename>", "[replica]");
         }
 
         @Override
@@ -150,7 +159,7 @@ public enum CommonCommand implements Command, ConvertableCommand{
             try {
                 content = FileHelper.read(Config.getInstance().getId(), request.getHeader());
             } catch (IOException e) {
-                content = "Read error. File may not exist. " + e.getMessage();
+                content = "Read error. " + e.getMessage();
             }
 
             return new Response(request)
@@ -166,9 +175,18 @@ public enum CommonCommand implements Command, ConvertableCommand{
                 throw new InvalidRequestException("Wrong arguments. Try: " + getHelpString());
             }
 
+            PhysicalNode node1 = LookupTable.getInstance().getNode(args[1]);
+            PhysicalNode node2 = LookupTable.getInstance().getNode(args[2]);
+            if (node1 == null || node2 == null) {
+                throw new InvalidRequestException("Invalid node id");
+            }
+
             return new Request().withType(CommonCommand.DISRUPT.name())
-                    .withReceiverId(args[1])
-                    .withAttachment(args[2])
+                    .withReceiverId(node1.getId())
+                    .withReceiver(node1.getAddress())
+                    .withSender(Config.getInstance().getAddress())
+                    .withSenderId(Config.getInstance().getId())
+                    .withAttachment(node2.getId())
                     .withTimestamp(LogicClock.getInstance().getClock());
         }
 
@@ -179,7 +197,7 @@ public enum CommonCommand implements Command, ConvertableCommand{
 
         @Override
         public String getHelpString() {
-            return String.format(getParameterizedString(), "<sender> <receiver>");
+            return String.format(getParameterizedString(), "<sender>", "<receiver>");
         }
 
         @Override
@@ -199,9 +217,18 @@ public enum CommonCommand implements Command, ConvertableCommand{
                 throw new InvalidRequestException("Wrong arguments. Try: " + getHelpString());
             }
 
+            PhysicalNode node1 = LookupTable.getInstance().getNode(args[1]);
+            PhysicalNode node2 = LookupTable.getInstance().getNode(args[2]);
+            if (node1 == null || node2 == null) {
+                throw new InvalidRequestException("Invalid node id");
+            }
+
             return new Request().withType(CommonCommand.RESUME.name())
-                    .withReceiverId(args[1])
-                    .withAttachment(args[2])
+                    .withReceiverId(node1.getId())
+                    .withReceiver(node1.getAddress())
+                    .withSender(Config.getInstance().getAddress())
+                    .withSenderId(Config.getInstance().getId())
+                    .withAttachment(node2.getId())
                     .withTimestamp(LogicClock.getInstance().getClock());
         }
 
@@ -212,7 +239,7 @@ public enum CommonCommand implements Command, ConvertableCommand{
 
         @Override
         public String getHelpString() {
-            return String.format(getParameterizedString(), "<sender> <receiver>");
+            return String.format(getParameterizedString(), "<sender>", "<receiver>");
         }
 
         @Override
@@ -232,8 +259,13 @@ public enum CommonCommand implements Command, ConvertableCommand{
                 throw new InvalidRequestException("Wrong arguments. Try: " + getHelpString());
             }
 
+            PhysicalNode node1 = LookupTable.getInstance().getNode(args[1]);
+            if (node1 == null) {
+                throw new InvalidRequestException("Invalid node id");
+            }
+
             return new Request().withType(CommonCommand.DISRUPT_LOCAL.name())
-                    .withAttachment(args[1]);
+                    .withAttachment(node1.getId());
         }
 
         @Override
@@ -263,8 +295,13 @@ public enum CommonCommand implements Command, ConvertableCommand{
                 throw new InvalidRequestException("Wrong arguments. Try: " + getHelpString());
             }
 
+            PhysicalNode node1 = LookupTable.getInstance().getNode(args[1]);
+            if (node1 == null) {
+                throw new InvalidRequestException("Invalid node id");
+            }
+
             return new Request().withType(CommonCommand.RESUME_LOCAL.name())
-                    .withAttachment(args[1]);
+                    .withAttachment(node1.getId());
         }
 
         @Override
@@ -283,6 +320,40 @@ public enum CommonCommand implements Command, ConvertableCommand{
             LookupTable.getInstance().resume(id);
             return new Response(request)
                     .withMessage("Local channel to remote " + id + " has been resumed")
+                    .withTimestamp(LogicClock.getInstance().getClock());
+        }
+    },
+
+    LIST {
+        @Override
+        public Request convertToRequest(String[] args) throws InvalidRequestException {
+            if (args.length != 2) {
+                throw new InvalidRequestException("Wrong arguments. Try: " + getHelpString());
+            }
+
+            return new Request().withType(CommonCommand.LIST.name())
+                    .withAttachment(args[1]);
+        }
+
+        @Override
+        public String getParameterizedString() {
+            return CommonCommand.LIST.name() + " %s";
+        }
+
+        @Override
+        public String getHelpString() {
+            return String.format(getParameterizedString(), "<file name>");
+        }
+
+        @Override
+        public Response execute(Request request) {
+            String filename = request.getAttachment();
+            List<PhysicalNode> replicas = LookupTable.getInstance().lookup(filename);
+            StringBuilder result = new StringBuilder();
+            for (PhysicalNode p : replicas)
+                result.append(p.getId()).append(" ");
+            return new Response(request)
+                    .withMessage(result.toString())
                     .withTimestamp(LogicClock.getInstance().getClock());
         }
     }

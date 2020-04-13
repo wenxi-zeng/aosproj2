@@ -25,6 +25,7 @@ public class FileHelper {
                 }
             }
         }
+        else throw new IOException("File " + filename + " does not exist.");
 
         return lines;
     }

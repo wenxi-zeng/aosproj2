@@ -56,12 +56,13 @@ public class LookupTable {
         List<String> replicas = new ArrayList<>();
 
         for (int i = 0; i < 3; i++) {
-            PhysicalNode node = nodes.get((h + 1) % 7);
+            PhysicalNode node = nodes.get((h + i) % 7);
             if (!node.isActive() && !node.getId().equals(Config.getInstance().getId()))
                 replicas.add(node.getId());
         }
 
-        return String.join(" and ", replicas);
+        if (replicas.size() == 1) return replicas.get(0);
+        else return String.join(" and ", replicas);
     }
 
     public void disrupt(String nodeId) {
@@ -84,14 +85,16 @@ public class LookupTable {
 
     public PhysicalNode chooseServer(String file) {
         List<PhysicalNode> pnodes = lookup(file);
-        return pnodes.get(MathX.nextInt(pnodes.size()));
+        if (pnodes.size() == 0) return null;
+        else return pnodes.get(MathX.nextInt(pnodes.size()));
     }
 
     public PhysicalNode chooseServer(String file, int replica) {
         if (replica < 0) return chooseServer(file);
 
         List<PhysicalNode> pnodes = lookup(file);
-        return pnodes.get(replica % 7);
+        if (pnodes.size() == 0) return null;
+        else return pnodes.get(replica % pnodes.size());
     }
 
     public PhysicalNode getNode(String id) {

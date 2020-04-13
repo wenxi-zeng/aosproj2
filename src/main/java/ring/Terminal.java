@@ -9,6 +9,7 @@ public class Terminal {
 
     public void printInfo() {
         System.out.println("\nAvailable commands:\n" +
+                CommonCommand.LIST.getHelpString() + "\n" +
                 CommonCommand.READ.getHelpString() + "\n" +
                 CommonCommand.APPEND.getHelpString() + "\n" +
                 CommonCommand.DISRUPT.getHelpString() + "\n" +
@@ -29,6 +30,6 @@ public class Terminal {
     }
 
     public Request translate(String command) throws InvalidRequestException {
-        return translate(command.split(" "));
+        return translate(command.split(" (?=([^\"]*\"[^\"]*\")*[^\"]*$)"));
     }
 }

@@ -40,6 +40,21 @@ public class FileClient {
         }
     };
 
+    private SocketClient.ServerCallBack terminalCallback = new SocketClient.ServerCallBack() {
+        @Override
+        public void onResponse(Request request, Response response) {
+            LogicClock.getInstance().increment(response.getTimestamp());
+            SimpleLog.v("[" + request.getReceiverId() + "]: " + response.getMessage());
+            semaphore.release();
+        }
+
+        @Override
+        public void onFailure(Request request, String error) {
+            SimpleLog.v(request.getType() + " failed. receives failure from " + request.getReceiverId() + ", error message: " + error);
+            semaphore.release();
+        }
+    };
+
     public static void main(String[] args) {
         if (args.length < 2) {
             System.err.println ("Usage: FileClient <-a | -t> <client name>");
@@ -99,6 +114,11 @@ public class FileClient {
 
             String file = choseFile();
             PhysicalNode node = LookupTable.getInstance().chooseServer(file);
+            if (node == null) {
+                SimpleLog.v("No replica available for " + file);
+                remainingActions--;
+                continue;
+            }
             long timestamp = LogicClock.getInstance().getClock();
 
             Request request = new Request()
@@ -147,23 +167,29 @@ public class FileClient {
     }
 
     private void launchTerminal() {
-        Scanner in = new Scanner(System.in);
-        String command = in.nextLine();
         Terminal terminal = new Terminal();
         terminal.printInfo();
+        Scanner in = new Scanner(System.in);
+        String command = in.nextLine();
 
         while (!command.equalsIgnoreCase("exit")){
             try {
+                if (command.trim().isEmpty()) {
+                    command = in.nextLine();
+                    continue;
+                }
+
                 Request request = terminal.translate(command);
-                if (request.getType().equals(CommonCommand.DISRUPT_LOCAL.name()) || request.getType().equals(CommonCommand.RESUME_LOCAL.name())) {
+                if (request.getType().equals(CommonCommand.DISRUPT_LOCAL.name()) ||
+                        request.getType().equals(CommonCommand.RESUME_LOCAL.name()) ||
+                        request.getType().equals(CommonCommand.LIST.name())) {
                     CommonCommand cmd = CommonCommand.valueOf(request.getType());
                     Response response = cmd.execute(request);
                     SimpleLog.v(response.getMessage());
                 }
                 else {
                     if (LookupTable.getInstance().getNode(request.getReceiverId()).isActive()) {
-                        SimpleLog.v(Config.getInstance().getId() + " requests: \"" + request.getAttachment() + "\" " + "for file #" + request.getHeader() + " at time: " + request.getTimestamp());
-                        socketClient.send(request.getReceiver(), request, callBack);
+                        socketClient.send(request.getReceiver(), Config.getInstance().getPort(), request, terminalCallback);
                         try {
                             semaphore.acquire();
                         } catch (InterruptedException e) {
@@ -177,7 +203,9 @@ public class FileClient {
 
                 command = in.nextLine();
             } catch (InvalidRequestException e) {
-                e.printStackTrace();
+                SimpleLog.v(e.getMessage());
+                terminal.printInfo();
+                command = in.nextLine();
             }
         }
     }

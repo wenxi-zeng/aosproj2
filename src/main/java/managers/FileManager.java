@@ -32,7 +32,7 @@ public class FileManager implements Observer {
     }
 
     public void init() {
-        this.executor = Executors.newFixedThreadPool(32);
+        this.executor = Executors.newFixedThreadPool(128);
     }
 
     @Override
@@ -58,10 +58,17 @@ public class FileManager implements Observer {
     }
 
     public synchronized void release(Request request) {
-        FileWorker worker = map.get(request.getHeader());
-        if (worker != null) {
-            worker.release(request);
-            // if (!worker.isWorking()) map.remove(request.getHeader());
+        if (request.getHeader() == null) {
+            for (FileWorker worker : map.values()) {
+                worker.release(request);
+            }
+        }
+        else {
+            FileWorker worker = map.get(request.getHeader());
+            if (worker != null) {
+                worker.release(request);
+                // if (!worker.isWorking()) map.remove(request.getHeader());
+            }
         }
     }
 }

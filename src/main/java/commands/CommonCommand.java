@@ -204,6 +204,11 @@ public enum CommonCommand implements Command, ConvertableCommand{
         public Response execute(Request request) {
             String id = request.getAttachment();
             LookupTable.getInstance().disrupt(id);
+            PhysicalNode node = LookupTable.getInstance().getNode(id);
+            if (node != null) {
+                request.setSender(node.getAddress());
+                FileManager.getInstance().release(request);
+            }
             return new Response(request)
                     .withMessage("Channel " + Config.getInstance().getId() + " -> " + id + " has been disrupted")
                     .withTimestamp(LogicClock.getInstance().getClock());
